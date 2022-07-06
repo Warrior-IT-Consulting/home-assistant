@@ -1,0 +1,16 @@
+template:
+  - sensor:
+      - name: Economy 7 Tariff
+        unique_id: "custom.economy_7_tariff"
+        unit_of_measurement: "GBP/kWh"
+        state: >
+          {% set day_rate = 0.29714 %}
+          {% set day_rate_time_from = "07:00" %}
+          {% set night_rate = 0.20007 %}
+          {% set night_rate_time_from = "00:00" %}
+          {% set now = now() %}
+          {% if now >= today_at(night_rate_time_from) and now < today_at(day_rate_time_from) %}
+            {{ night_rate }}
+          {% else %}
+            {{ day_rate }}
+          {% endif %}
