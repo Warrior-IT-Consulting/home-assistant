@@ -1,0 +1,160 @@
+# Smart Meter
+
+# TODO
+#   - Constants for rates
+
+# Electricity - Economy 7
+- trigger:
+    - platform: state
+      entity_id:
+        - sensor.smart_meter_electricity_energy_import_today
+  sensor:
+    - name: "Smart Meter Electricity: Import Economy 7 Status"
+      unique_id: smart_meter_electricity_import_economy_7_status
+      icon: mdi:cash
+      state: >
+        {% set rate = (states('sensor.smart_meter_electricity_import_unit_rate')  | float ) | round(2) %}
+        {% if rate > 0.25 %}
+          {{ 'peak' }}
+        {% else %}
+          {{ 'off_peak' }}
+        {% endif %}
+
+# Electricity - Energy Import Off Peak / Peak
+- trigger:
+    - platform: state
+      entity_id:
+        - sensor.smart_meter_electricity_energy_import_today
+  sensor:
+    - name: "Smart Meter Electricity: Import Off Peak Today"
+      unique_id: smart_meter_electricity_import_off_peak_today
+      device_class: "energy"
+      unit_of_measurement: "kWh"
+      state_class: "total_increasing"
+      icon: "mdi:flash"
+      state: >
+        {% set economy_7_status = states('sensor.smart_meter_electricity_import_economy_7_status') %}
+        {% set current_value = states('sensor.smart_meter_electricity_import_off_peak_today') %}
+        {% if current_value != 'unknown' and current_value != 'unavailable' %}
+          {% if economy_7_status == 'off_peak' %}
+            {{ states('sensor.smart_meter_electricity_energy_import_today') }}
+          {% else %}
+            {{ current_value }}
+          {% endif %}
+        {% else %}
+          {{ 0 }}  
+        {% endif %}
+
+- trigger:
+    - platform: state
+      entity_id:
+        - sensor.smart_meter_electricity_energy_import_today
+  sensor:
+    - name: "Smart Meter Electricity: Import Peak Today"
+      unique_id: smart_meter_electricity_import_peak_today
+      device_class: "energy"
+      unit_of_measurement: "kWh"
+      state_class: "total_increasing"
+      icon: "mdi:flash"
+      state: >
+        {% set economy_7_status = states('sensor.smart_meter_electricity_import_economy_7_status') %}
+        {% set current_value = states('sensor.smart_meter_electricity_import_off_peak_today') %}
+        {% if current_value != 'unknown' and current_value != 'unavailable' %}        
+          {% if economy_7_status == 'peak' %}
+            {{ (
+              states('sensor.smart_meter_electricity_energy_import_today') | float
+              - states('sensor.smart_meter_electricity_import_off_peak_today') | float )
+              | round(2)
+            }}
+          {% else %}
+            {{ current_value }}
+          {% endif %}
+        {% else %}
+          {{ 0 }}  
+        {% endif %}
+
+# Electricity - Cost Off Peak Today
+- sensor:
+    - name: "Smart Meter Electricity: Cost Off Peak Today"
+      unique_id: smart_meter_electricity_cost_off_peak_today
+      device_class: monetary
+      unit_of_measurement: "GBP"
+      state_class: "total_increasing"
+      icon: mdi:cash
+      state: >
+        {{ (
+          states('sensor.smart_meter_electricity_import_off_peak_today') | float
+          * 0.1495 | float
+        ) | round(2) }}
+
+# Electricity - Cost Off Peak Savings Today
+- sensor:
+    - name: "Smart Meter Electricity: Cost Off Peak Today Savings"
+      unique_id: smart_meter_electricity_cost_off_peak_today_savings
+      device_class: monetary
+      unit_of_measurement: "GBP"
+      state_class: "total_increasing"
+      icon: mdi:cash
+      state: >
+        {{ (
+          states('sensor.smart_meter_electricity_import_off_peak_today') | float
+          * 0.4025 | float
+        ) | round(2) }}
+
+# Electricity - Cost On Peak Rate Today
+- sensor:
+    - name: "Smart Meter Electricity: Cost Peak Today"
+      unique_id: smart_meter_electricity_cost_peak_today
+      device_class: monetary
+      unit_of_measurement: "GBP"
+      state_class: "total_increasing"
+      icon: mdi:cash
+      state: >
+        {{ (
+          states('sensor.smart_meter_electricity_import_peak_today') | float
+          * 0.4025 | float
+        ) | round(2) }}
+
+# Electricity - Cost Today
+- sensor:
+    - name: "Smart Meter Electricity: Cost Today"
+      unique_id: smart_meter_electricity_cost_today
+      device_class: monetary
+      unit_of_measurement: "GBP"
+      state_class: "total_increasing"
+      icon: mdi:cash
+      state: >
+        {{ (
+          states('sensor.smart_meter_electricity_cost_off_peak_today') | float
+          + states('sensor.smart_meter_electricity_cost_peak_today') | float
+          + states('sensor.smart_meter_electricity_import_standing_charge') | float
+        ) | round(2) }}
+
+# Electricity - Cost If On Normal Tariff
+- sensor:
+    - name: "Smart Meter Electricity: Cost Today Off Economy 7"
+      unique_id: smart_meter_electricity_cost_today_off_economy_7
+      device_class: monetary
+      unit_of_measurement: "GBP"
+      state_class: "total_increasing"
+      icon: mdi:cash
+      state: >
+        {{ (
+          states('sensor.smart_meter_electricity_energy_import_today') | float
+          * 0.34 | float
+          + states('sensor.smart_meter_electricity_import_standing_charge') | float
+        ) | round(2) }}
+
+# Gas - Energy Import Cost
+- sensor:
+    - name: "Smart Meter Gas: Cost Today"
+      unique_id: smart_meter_gas_cost_today
+      device_class: monetary
+      unit_of_measurement: "GBP"
+      state_class: "total_increasing"
+      icon: mdi:cash
+      state: "{{ (
+        states('sensor.smart_meter_gas_import_today') | float
+        * states('sensor.smart_meter_gas_import_unit_rate') | float
+        + states('sensor.smart_meter_gas_import_standing_charge') | float
+        ) | round(2) }}"
